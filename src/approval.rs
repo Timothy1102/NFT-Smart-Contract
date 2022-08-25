@@ -86,4 +86,29 @@ impl NonFungibleTokenApproval for Contract {
             false
         }
     }
+
+    #[payable]
+    fn nft_revoke(&mut self, token_id: TokenId, account_id: AccountId) {
+        assert_one_yocto();
+        let mut token = self.tokens_by_id.get(&token_id).expect("Not found token");
+        let sender_id = env::predecessor_account_id();
+        assert_eq!(&sender_id, &token.owner_id);
+        if token.approved_account_ids.remove(&account_id).is_some() {
+            refund_approved_account_ids_iter(sender_id, [account_id].iter());
+            self.tokens_by_id.insert(&token_id, &token);
+        }
+    }
+
+    #[payable]
+    fn nft_revoke_all(&mut self, token_id: TokenId) {
+        assert_one_yocto();
+        let mut token = self.tokens_by_id.get(&token_id).expect("Not found token");
+        let sender_id = env::predecessor_account_id();
+        assert_eq!(&sender_id, &token.owner_id);
+        if token.approved_account_ids.is_empty() {
+            refund_approved_account_ids(sender_id, &token.approved_account_ids);
+            token.approved_account_ids.clear();
+            self.tokens_by_id.insert(&token_id, &token);
+        }
+    }
 }
